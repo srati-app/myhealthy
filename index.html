@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My-Healthy App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; color: black; padding: 0; }
+            .print-container { width: 100%; border: none; box-shadow: none; }
+        }
+        .print-only { display: none; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .chat-bubble-user { border-radius: 15px 15px 0 15px; }
+        .chat-bubble-ai { border-radius: 15px 15px 15px 0; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased pb-20 print-container" onload="initApp()">
+
+    <!-- Header (No Print) -->
+    <header class="bg-teal-600 text-white p-4 shadow-md sticky top-0 z-50 flex justify-between items-center no-print">
+        <h1 class="text-xl font-bold"><i class="fa-solid fa-leaf mr-2"></i>My-Healthy</h1>
+        <div class="flex space-x-3">
+            <button onclick="toggleBahasa()" class="text-xs font-bold bg-teal-700 px-2 py-1 rounded" id="langToggle">BM/EN</button>
+            <button onclick="bukaModalSetting()" class="text-xl hover:text-teal-200"><i class="fa-solid fa-gear"></i></button>
+        </div>
+    </header>
+
+    <!-- Header untuk Cetakan Sahaja -->
+    <div class="print-only mb-6 p-4 border-b-2 border-black">
+        <h1 class="text-2xl font-bold">Laporan Kesihatan My-Healthy</h1>
+        <p id="printDate" class="text-sm"></p>
+        <div id="printProfileInfo" class="mt-4 grid grid-cols-2 text-sm gap-2"></div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="max-w-md mx-auto p-4 space-y-4">
+
+        <!-- TAB 1: HOME -->
+        <section id="tab-home" class="tab-content active space-y-4">
+            <div class="bg-white rounded-xl shadow-sm p-3 text-center border border-slate-200 no-print">
+                <p id="clockDisplay" class="font-bold text-teal-700 text-lg"></p>
+                <p id="dateDisplay" class="text-xs text-slate-500"></p>
+            </div>
+
+            <div class="bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-xl shadow-sm p-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="font-bold text-lg" id="homeName">Nama Pengguna</h2>
+                    <span class="bg-white text-teal-700 text-xs font-bold px-2 py-1 rounded-md" id="homeBmiBadge">BMI: 0</span>
+                </div>
+                <p class="text-sm" id="homeBmiStatus">Status Kesihatan: Tiada Data</p>
+                <p class="text-xs mt-1 text-teal-100">Sasaran Berat: <span id="homeTargetW">0</span> kg</p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
+                <h3 class="font-bold text-sm text-slate-700 mb-3 border-b pb-1"><i class="fa-solid fa-fire mr-2 text-orange-500"></i>Ringkasan Defisit Kalori (Hari Ini)</h3>
+                <div class="grid grid-cols-2 gap-3 mb-2 text-center">
+                    <div class="bg-blue-50 p-2 rounded-lg">
+                        <p class="text-[10px] text-blue-600 font-bold uppercase">Baki Boleh Diambil</p>
+                        <p class="text-xl font-bold text-blue-700" id="homeBakiKalori">0</p>
+                    </div>
+                    <div class="bg-orange-50 p-2 rounded-lg">
+                        <p class="text-[10px] text-orange-600 font-bold uppercase">Perlu Dibakar (Offset)</p>
+                        <p class="text-xl font-bold text-orange-700" id="homePerluBakar">0</p>
+                    </div>
+                </div>
+                <p class="text-[10px] text-slate-500 text-center">*Anggaran berdasarkan sasaran kalori vs pengambilan & senaman.</p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-4 border border-slate-200">
+                <h3 class="font-bold text-sm text-slate-700 mb-3 border-b pb-1"><i class="fa-solid fa-notes-medical mr-2 text-rose-500"></i>Status HPT & DM Terkini</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <p class="text-xs font-bold text-slate-600">Tekanan Darah (HPT)</p>
+                        <p class="text-lg font-bold text-rose-600" id="homeHptValue">- / -</p>
+                        <p class="text-[10px] text-slate-500" id="homeHptStatus">Tiada rekod</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-600">Kadar Gula (DM)</p>
+                        <p class="text-lg font-bold text-indigo-600" id="homeDmValue">-</p>
+                        <p class="text-[10px] text-slate-500" id="homeDmStatus">Tiada rekod</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden no-print">
+                <div class="bg-slate-800 text-white p-3 flex justify-between items-center">
+                    <h3 class="font-bold text-sm"><i class="fa-solid fa-robot mr-2 text-teal-400"></i>Tanya Mr. MH (AI Coach)</h3>
+                </div>
+                <div class="p-3 h-48 overflow-y-auto bg-slate-50 space-y-3" id="chatBox">
+                    <div class="text-left"><span class="bg-teal-100 text-teal-800 text-xs py-2 px-3 inline-block chat-bubble-ai shadow-sm">Hai! Saya Mr. MH, pakar kesihatan dan pemakanan anda. Ada soalan hari ini?</span></div>
+                </div>
+                <div class="p-2 bg-white border-t flex">
+                    <input type="text" id="chatInput" placeholder="Tanya tentang diet, kesihatan..." class="w-full bg-slate-100 text-sm rounded-l-lg px-3 py-2 outline-none focus:ring-1 focus:ring-teal-500">
+                    <button onclick="hantarChat()" class="bg-teal-600 text-white px-4 py-2 rounded-r-lg text-sm hover:bg-teal-700"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: CAL DEF -->
+        <section id="tab-caldef" class="tab-content space-y-4 no-print">
+            <h2 class="font-bold text-lg text-slate-700 mb-2">Penjejak Kalori Defisit</h2>
+            
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                <h3 class="text-sm font-bold text-teal-700 mb-3"><i class="fa-solid fa-utensils mr-2"></i>Tambah Pemakanan</h3>
+                <select id="mealType" class="w-full bg-slate-50 border rounded-lg p-2 text-sm mb-3">
+                    <option value="Sarapan">Sarapan</option>
+                    <option value="Makan Tengah Hari">Makan Tengah Hari</option>
+                    <option value="Makan Malam">Makan Malam</option>
+                    <option value="Snek">Snek / Kudapan</option>
+                </select>
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                    <input type="text" id="foodName" placeholder="Jenis Makanan (cth: Nasi Lemak)" class="col-span-2 w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                    <input type="text" id="foodQty" placeholder="Kuantiti (cth: 1 bungkus, 200g)" class="col-span-1 w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                </div>
+                <button onclick="kiraKaloriAIFood()" class="w-full bg-indigo-500 text-white font-bold text-sm py-2 rounded-lg hover:bg-indigo-600 flex justify-center items-center">
+                    <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Kira Kalori & Simpan (AI)
+                </button>
+                <p id="foodStatus" class="text-[10px] text-center mt-2 text-slate-500"></p>
+            </div>
+
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                <h3 class="text-sm font-bold text-orange-600 mb-3"><i class="fa-solid fa-person-running mr-2"></i>Tambah Senaman / Aktiviti</h3>
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <input type="text" id="exerciseName" placeholder="Aktiviti (cth: Jogging)" class="w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                    <input type="number" id="exerciseBurn" placeholder="Kalori Terbakar (kcal)" class="w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                </div>
+                <button onclick="simpanSenaman()" class="w-full bg-orange-500 text-white font-bold text-sm py-2 rounded-lg hover:bg-orange-600">Simpan Aktiviti</button>
+            </div>
+
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                <h3 class="text-sm font-bold text-slate-700 border-b pb-2 mb-2">Log Kalori Hari Ini <span class="text-[10px] font-normal text-slate-400">(Lihat tab 'Rekod' untuk details)</span></h3>
+                <ul id="calDefLog" class="text-xs space-y-2"></ul>
+            </div>
+        </section>
+
+        <!-- TAB 3: HPT & DM -->
+        <section id="tab-health" class="tab-content space-y-4 no-print">
+            <h2 class="font-bold text-lg text-slate-700 mb-2">Pemantauan HPT & DM</h2>
+            
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-rose-100">
+                <h3 class="text-sm font-bold text-rose-600 mb-3"><i class="fa-solid fa-heart-pulse mr-2"></i>Tekanan Darah (Hypertension)</h3>
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                    <div>
+                        <label class="text-[10px] text-slate-500 font-bold">Systolic (Atas)</label>
+                        <input type="number" id="bpSys" placeholder="120" class="w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-500 font-bold">Diastolic (Bawah)</label>
+                        <input type="number" id="bpDia" placeholder="80" class="w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-500 font-bold">HR / Pulse</label>
+                        <input type="number" id="bpPulse" placeholder="72" class="w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                    </div>
+                </div>
+                <button onclick="simpanHPT()" class="w-full bg-rose-500 text-white font-bold text-sm py-2 rounded-lg hover:bg-rose-600">Simpan & Analisis HPT</button>
+                <div id="hptAnalysis" class="mt-3 text-xs p-2 rounded hidden"></div>
+            </div>
+
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-indigo-100">
+                <h3 class="text-sm font-bold text-indigo-600 mb-3"><i class="fa-solid fa-droplet mr-2"></i>Kadar Gula (Diabetes Mellitus)</h3>
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                    <div>
+                        <label class="text-[10px] text-slate-500 font-bold">Bacaan (mmol/L)</label>
+                        <input type="number" step="0.1" id="dmSugar" placeholder="5.2" class="w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-500 font-bold">Pengambilan</label>
+                        <select id="dmCondition" class="w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                            <option value="Berpuasa">Berpuasa</option>
+                            <option value="Selepas Makan">Selepas Makan</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-500 font-bold">Waktu</label>
+                        <select id="dmTime" class="w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                            <option value="Pagi">Pagi</option>
+                            <option value="Petang">Petang</option>
+                            <option value="Malam">Malam</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="simpanDM()" class="w-full bg-indigo-500 text-white font-bold text-sm py-2 rounded-lg hover:bg-indigo-600">Simpan & Analisis DM</button>
+                <div id="dmAnalysis" class="mt-3 text-xs p-2 rounded hidden"></div>
+            </div>
+            
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                <h3 class="text-sm font-bold text-slate-700 border-b pb-2 mb-2">Log Kesihatan Terkini</h3>
+                <ul id="healthLog" class="text-xs space-y-2"></ul>
+            </div>
+        </section>
+
+        <!-- TAB 4: REKOD & LOG TERPERINCI -->
+        <section id="tab-logs" class="tab-content space-y-4 no-print">
+            <h2 class="font-bold text-lg text-slate-700 mb-2">Semakan & Cetakan Log Harian</h2>
+            
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="w-full">
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Pilih Tarikh:</label>
+                        <input type="date" id="logDateSelect" onchange="renderDetailedLogs()" class="w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                    </div>
+                    <div class="w-auto mt-5">
+                        <button onclick="cetakDariTabLogs()" class="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-700"><i class="fa-solid fa-print"></i></button>
+                    </div>
+                </div>
+
+                <div id="detailedLogsContainer" class="space-y-4">
+                    <!-- Logs dipaparkan secara dinamik di sini -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: PROFILE -->
+        <section id="tab-profile" class="tab-content space-y-4 no-print">
+            <h2 class="font-bold text-lg text-slate-700 mb-2">Maklumat Profil</h2>
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                <form id="formProfile" onsubmit="simpanProfile(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600">Nama Penuh</label>
+                        <input type="text" id="profNama" class="w-full bg-slate-50 border rounded-lg p-2 text-sm" value="Mohd Elyas">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600">Tarikh Lahir</label>
+                            <input type="date" id="profDob" class="w-full bg-slate-50 border rounded-lg p-2 text-sm" value="1985-07-18">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600">Jantina</label>
+                            <select id="profJantina" class="w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                                <option value="lelaki">Lelaki</option>
+                                <option value="perempuan">Perempuan</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600">Tinggi (cm)</label>
+                            <input type="number" id="profTinggi" class="w-full bg-slate-50 border rounded-lg p-2 text-sm" value="170">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600">Berat Semasa (kg)</label>
+                            <input type="number" id="profBerat" class="w-full bg-slate-50 border rounded-lg p-2 text-sm" value="75">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600">Sasaran (kg)</label>
+                            <input type="number" id="profTarget" class="w-full bg-slate-50 border rounded-lg p-2 text-sm" value="70">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600">Emel (Untuk AI Gemini)</label>
+                        <input type="email" id="profEmel" placeholder="elyasbakri18@..." class="w-full bg-slate-50 border rounded-lg p-2 text-sm">
+                    </div>
+                    <div class="bg-amber-50 p-3 rounded border border-amber-200">
+                        <label class="block text-xs font-bold text-amber-800"><i class="fa-solid fa-key mr-1"></i>API Key Gemini (Wajib untuk AI)</label>
+                        <input type="password" id="profApiKey" placeholder="Tampal API Key Google Gemini di sini..." class="w-full bg-white border border-amber-300 rounded-lg p-2 text-sm mt-1">
+                        <p class="text-[9px] text-amber-700 mt-1">Key disimpan hanya di peranti ini (localStorage) demi keselamatan.</p>
+                    </div>
+                    <button type="submit" class="w-full bg-teal-600 text-white font-bold py-2 rounded-lg hover:bg-teal-700 mt-4">Simpan Maklumat Profil</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- PRINT LOG SECTION (Hidden on screen, visible on print) -->
+        <section id="printDataLog" class="print-only">
+            <!-- Data populated via JS when print is clicked -->
+        </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar (No Print) -->
+    <nav class="fixed bottom-0 w-full bg-white border-t border-slate-200 flex justify-around p-2 z-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] no-print">
+        <button onclick="tukarTab('home')" class="nav-btn text-teal-600 flex flex-col items-center w-1/5" id="btn-home">
+            <i class="fa-solid fa-house text-lg mb-1"></i><span class="text-[9px] font-bold">Home</span>
+        </button>
+        <button onclick="tukarTab('caldef')" class="nav-btn text-slate-400 hover:text-teal-600 flex flex-col items-center w-1/5 transition" id="btn-caldef">
+            <i class="fa-solid fa-utensils text-lg mb-1"></i><span class="text-[9px] font-bold">Cal Def</span>
+        </button>
+        <button onclick="tukarTab('health')" class="nav-btn text-slate-400 hover:text-teal-600 flex flex-col items-center w-1/5 transition" id="btn-health">
+            <i class="fa-solid fa-heart-pulse text-lg mb-1"></i><span class="text-[9px] font-bold">HPT & DM</span>
+        </button>
+        <button onclick="tukarTab('logs')" class="nav-btn text-slate-400 hover:text-teal-600 flex flex-col items-center w-1/5 transition" id="btn-logs">
+            <i class="fa-solid fa-clipboard-list text-lg mb-1"></i><span class="text-[9px] font-bold">Rekod</span>
+        </button>
+        <button onclick="tukarTab('profile')" class="nav-btn text-slate-400 hover:text-teal-600 flex flex-col items-center w-1/5 transition" id="btn-profile">
+            <i class="fa-solid fa-user text-lg mb-1"></i><span class="text-[9px] font-bold">Profile</span>
+        </button>
+    </nav>
+
+    <!-- MODAL: SETTING & DATA MANAGEMENT -->
+    <div id="modalSetting" class="hidden fixed inset-0 bg-slate-900 bg-opacity-60 z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl w-full max-w-sm p-5 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-gear mr-2"></i>Tetapan Sistem</h3>
+                <button onclick="tutupModal('modalSetting')" class="text-slate-400 hover:text-rose-500"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="space-y-3">
+                <button onclick="exportData()" class="w-full bg-blue-50 text-blue-700 border border-blue-200 font-bold py-2 rounded-lg hover:bg-blue-100 flex items-center justify-center">
+                    <i class="fa-solid fa-download mr-2"></i> Eksport Data Backup (.json)
+                </button>
+                <label class="w-full bg-slate-50 text-slate-700 border border-slate-200 font-bold py-2 rounded-lg hover:bg-slate-100 flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-upload mr-2"></i> Import Data (.json)
+                    <input type="file" accept=".json" class="hidden" onchange="importData(event)">
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        let mhData = {
+            profile: { nama: "Mohd Elyas", dob: "1985-07-18", jantina: "lelaki", emel: "", tinggi: 170, berat: 75, targetBerat: 70, apiKey: "", tdee: 2000 },
+            calDef: [], 
+            hpt: [], 
+            dm: [], 
+            chatHist: []
+        };
+
+        const todayDate = new Date().toISOString().split('T')[0];
+
+        function initApp() {
+            const saved = localStorage.getItem('myHealthyDB');
+            if(saved) {
+                mhData = JSON.parse(saved);
+                // Tambah ID (patch) bagi data lama supaya fungsi PADAM tidak gagal
+                mhData.calDef.forEach(x => { if(!x.id) x.id = Date.now() + Math.random(); });
+                mhData.hpt.forEach(x => { if(!x.id) x.id = Date.now() + Math.random(); });
+                mhData.dm.forEach(x => { if(!x.id) x.id = Date.now() + Math.random(); });
+            }
+            
+            document.getElementById('logDateSelect').value = todayDate;
+            setInterval(updateClock, 1000);
+            updateClock();
+            populateFormProfile();
+            analisisKeseluruhan();
+        }
+
+        function saveData() {
+            localStorage.setItem('myHealthyDB', JSON.stringify(mhData));
+            analisisKeseluruhan();
+            if (document.getElementById('tab-logs').classList.contains('active')) {
+                renderDetailedLogs();
+            }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const days = ["Ahad","Isnin","Selasa","Rabu","Khamis","Jumaat","Sabtu"];
+            document.getElementById('clockDisplay').innerText = now.toLocaleTimeString('ms-MY', {hour12: true});
+            document.getElementById('dateDisplay').innerText = `${days[now.getDay()]}, ${now.toLocaleDateString('ms-MY')}`;
+        }
+
+        function tukarTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('text-teal-600');
+                el.classList.add('text-slate-400');
+            });
+            document.getElementById('tab-' + tabId).classList.add('active');
+            document.getElementById('btn-' + tabId).classList.remove('text-slate-400');
+            document.getElementById('btn-' + tabId).classList.add('text-teal-600');
+            
+            if (tabId === 'logs') renderDetailedLogs();
+            window.scrollTo(0,0);
+        }
+
+        function analisisKeseluruhan() {
+            const p = mhData.profile;
+            document.getElementById('homeName').innerText = p.nama;
+            document.getElementById('homeTargetW').innerText = p.targetBerat;
+            
+            let bmi = 0;
+            if(p.tinggi > 0 && p.berat > 0) {
+                bmi = (p.berat / Math.pow(p.tinggi/100, 2)).toFixed(1);
+                document.getElementById('homeBmiBadge').innerText = `BMI: ${bmi}`;
+                let status = bmi < 18.5 ? 'Kurang Berat' : (bmi < 24.9 ? 'Normal' : (bmi < 29.9 ? 'Lebih Berat' : 'Obesiti'));
+                document.getElementById('homeBmiStatus').innerText = `Status: ${status}`;
+                
+                let umur = new Date().getFullYear() - parseInt(p.dob.substring(0,4));
+                let bmr = (10 * p.berat) + (6.25 * p.tinggi) - (5 * umur) + (p.jantina==='lelaki'?5:-161);
+                p.tdee = Math.round(bmr * 1.2); 
+            }
+
+            let calIn = 0, calOut = 0;
+            mhData.calDef.filter(x => x.date === todayDate).forEach(x => {
+                if(x.type === 'in') calIn += x.cals;
+                if(x.type === 'out') calOut += x.cals;
+            });
+            
+            let targetIntake = p.tdee - 500; 
+            let baki = (targetIntake + calOut) - calIn;
+            
+            document.getElementById('homeBakiKalori').innerText = baki > 0 ? baki : 0;
+            document.getElementById('homePerluBakar').innerText = calIn > (targetIntake+calOut) ? Math.abs(baki) : 0;
+            renderCalLog();
+
+            if(mhData.hpt.length > 0) {
+                let latestHPT = mhData.hpt[mhData.hpt.length-1];
+                document.getElementById('homeHptValue').innerText = `${latestHPT.sys}/${latestHPT.dia}`;
+                document.getElementById('homeHptStatus').innerText = checkHptStatus(latestHPT.sys, latestHPT.dia);
+            }
+            if(mhData.dm.length > 0) {
+                let latestDM = mhData.dm[mhData.dm.length-1];
+                document.getElementById('homeDmValue').innerText = `${latestDM.sugar} mmol/L`;
+                document.getElementById('homeDmStatus').innerText = checkDmStatus(latestDM.sugar, latestDM.cond);
+            }
+            renderHealthLog();
+        }
+
+        // ============================================================================
+        // PANGGILAN MODEL GEMINI-3.8-FLASH DENGAN SISTEM TIMEOUT
+        // ============================================================================
+        async function panggilGeminiAI(prompt, apiKey) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); 
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+                    signal: controller.signal 
+                });
+                
+                clearTimeout(timeoutId); 
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error ? data.error.message : "Ralat menjana kandungan.");
+                }
+                
+                return data.candidates[0].content.parts[0].text;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    throw new Error("API tersekat. Pastikan anda menjalankan aplikasi dari URL pelayan (contoh: GitHub Pages), bukan storan telefon (content://).");
+                }
+                throw error;
+            }
+        }
+
+        async function kiraKaloriAIFood() {
+            const food = document.getElementById('foodName').value;
+            const qty = document.getElementById('foodQty').value;
+            const statusEl = document.getElementById('foodStatus');
+            const apiKey = mhData.profile.apiKey.trim();
+
+            if(!food || !qty) return alert("Sila isi jenis makanan dan kuantiti.");
+            if(!apiKey) return alert("Sila masukkan API Key Gemini di tab Profile.");
+
+            statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-indigo-500"></i> Mengira kalori (Gemini 3.8)...';
+            
+            const prompt = `Sebagai pakar pemakanan, berikan anggaran nilai kalori HANYA dalam bentuk NOMBOR BULAT (integer) bagi: ${qty} ${food}. Jangan letak teks lain, hanya nombor kalori.`;
+            
+            try {
+                const aiText = await panggilGeminiAI(prompt, apiKey);
+                
+                let kalori = parseInt(aiText.trim().replace(/\D/g, '')); 
+                if(isNaN(kalori)) kalori = 300; 
+
+                mhData.calDef.push({
+                    id: Date.now(), 
+                    date: todayDate, 
+                    time: new Date().toLocaleTimeString('ms-MY', {hour: '2-digit', minute:'2-digit', hour12:true}),
+                    meal: document.getElementById('mealType').value,
+                    food: food, qty: qty, cals: kalori, type: 'in'
+                });
+                saveData();
+                document.getElementById('foodName').value = '';
+                document.getElementById('foodQty').value = '';
+                statusEl.innerHTML = `<span class="text-emerald-500 font-bold"><i class="fa-solid fa-check"></i> ${kalori} kcal direkodkan!</span>`;
+                setTimeout(()=> statusEl.innerHTML='', 4000);
+            } catch (err) {
+                statusEl.innerHTML = `<span class="text-rose-500 font-bold">Ralat AI:</span> <span class="text-[10px] text-rose-400">${err.message}</span>`;
+            }
+        }
+
+        async function hantarChat() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value;
+            const box = document.getElementById('chatBox');
+            const apiKey = mhData.profile.apiKey.trim(); 
+
+            if(!msg) return;
+            if(!apiKey) return alert("Sila masukkan API Key Gemini di tab Profile.");
+
+            box.innerHTML += `<div class="text-right"><span class="bg-slate-200 text-slate-800 text-xs py-2 px-3 inline-block chat-bubble-user shadow-sm mt-2">${msg}</span></div>`;
+            input.value = '';
+            box.scrollTop = box.scrollHeight;
+            
+            try {
+                const promptContext = `Nama pengguna: ${mhData.profile.nama}, Umur: ${new Date().getFullYear() - parseInt(mhData.profile.dob.substring(0,4))}, Berat: ${mhData.profile.berat}kg. Sebagai AI Coach 'Mr. MH', jawab soalan ringkas ini: ${msg}`;
+                
+                const reply = await panggilGeminiAI(promptContext, apiKey);
+                
+                box.innerHTML += `<div class="text-left mt-2"><span class="bg-teal-100 text-teal-800 text-xs py-2 px-3 inline-block chat-bubble-ai shadow-sm">${reply.replace(/\n/g, '<br>')}</span></div>`;
+                box.scrollTop = box.scrollHeight;
+            } catch (e) {
+                box.innerHTML += `<div class="text-left mt-2"><span class="bg-rose-100 text-rose-800 text-xs py-2 px-3 inline-block chat-bubble-ai shadow-sm">Ralat AI: ${e.message}</span></div>`;
+                box.scrollTop = box.scrollHeight;
+            }
+        }
+        // ============================================================================
+
+        function simpanSenaman() {
+            const name = document.getElementById('exerciseName').value;
+            const burn = parseInt(document.getElementById('exerciseBurn').value);
+            if(name && burn) {
+                mhData.calDef.push({ 
+                    id: Date.now(), 
+                    date: todayDate, 
+                    time: new Date().toLocaleTimeString('ms-MY', {hour: '2-digit', minute:'2-digit', hour12:true}),
+                    food: name, cals: burn, type: 'out' 
+                });
+                saveData();
+                document.getElementById('exerciseName').value = ''; document.getElementById('exerciseBurn').value = '';
+                alert("Aktiviti direkodkan!");
+            }
+        }
+
+        function renderCalLog() {
+            const ul = document.getElementById('calDefLog');
+            ul.innerHTML = '';
+            mhData.calDef.filter(x=>x.date===todayDate).forEach(c => {
+                let icon = c.type==='in' ? '<i class="fa-solid fa-utensils text-indigo-500 mr-2"></i>' : '<i class="fa-solid fa-fire text-orange-500 mr-2"></i>';
+                let color = c.type==='in' ? 'text-indigo-600' : 'text-orange-600';
+                ul.innerHTML += `<li class="flex justify-between border-b pb-1">
+                    <span>${icon}${c.time ? c.time + ' - ' : ''}${c.food} ${c.qty?`(${c.qty})`:''}</span>
+                    <span class="font-bold ${color}">${c.type==='in'?'+':'-'}${c.cals} kcal</span>
+                </li>`;
+            });
+        }
+
+        // ============================================================================
+        // LOGIK BARU: TAB LOG TERPERINCI & FUNGSI PADAM (EDIT)
+        // ============================================================================
+        function renderDetailedLogs() {
+            const selDate = document.getElementById('logDateSelect').value;
+            const container = document.getElementById('detailedLogsContainer');
+            let html = '';
+
+            // 1. Kumpulan Pemakanan Sinergi (Cal In)
+            const meals = {'Sarapan':[], 'Makan Tengah Hari':[], 'Makan Malam':[], 'Snek':[]};
+            mhData.calDef.filter(x => x.date === selDate && x.type === 'in').forEach(x => {
+                if(meals[x.meal]) meals[x.meal].push(x);
+            });
+
+            html += `<h3 class="font-bold text-sm text-teal-700 border-b-2 border-teal-200 pb-1 mt-2 mb-3"><i class="fa-solid fa-utensils mr-2"></i> Log Pemakanan</h3>`;
+            let adaMakan = false;
+            
+            for(let m in meals) {
+                if(meals[m].length > 0) {
+                    adaMakan = true;
+                    // Format sinergi: Nasi Goreng - Karipap - Kopi | 360kcal - 150kcal - 90kcal
+                    let namaMakanan = meals[m].map(x => x.food).join(' - ');
+                    let senaraiKalori = meals[m].map(x => x.cals + 'kcal').join(' - ');
+                    let jumlahCals = meals[m].reduce((sum, x) => sum + x.cals, 0);
+                    
+                    html += `
+                    <div class="bg-teal-50 p-3 rounded-xl mb-3 border border-teal-100 shadow-sm">
+                        <p class="text-sm font-bold text-teal-800 mb-1">${m} <span class="font-normal text-[10px] text-teal-600 ml-2">(Kumpulan)</span></p>
+                        <p class="text-[11px] text-teal-700 italic bg-white p-2 rounded border border-teal-100 mb-2">
+                            ${namaMakanan} | ${senaraiKalori} | <span class="font-bold">Jumlah Kalori: ${jumlahCals}kcal</span>
+                        </p>
+                        <ul class="space-y-1">`;
+                        
+                    meals[m].forEach(item => {
+                        html += `
+                        <li class="flex justify-between items-center text-xs bg-white p-2 rounded shadow-sm border border-slate-100">
+                            <span><i class="fa-regular fa-clock text-slate-400 mr-1"></i> ${item.time || ''} - ${item.food} (${item.qty}) = ${item.cals}kcal</span>
+                            <button onclick="padamLog('calDef', ${item.id})" class="text-rose-500 hover:bg-rose-100 p-1 rounded transition"><i class="fa-solid fa-trash"></i></button>
+                        </li>`;
+                    });
+                    html += `</ul></div>`;
+                }
+            }
+            if(!adaMakan) html += `<p class="text-xs text-slate-500 mb-4">Tiada rekod pemakanan pada tarikh ini.</p>`;
+
+            // 2. Senaman (Cal Out)
+            const workouts = mhData.calDef.filter(x => x.date === selDate && x.type === 'out');
+            html += `<h3 class="font-bold text-sm text-orange-600 border-b-2 border-orange-200 pb-1 mt-5 mb-3"><i class="fa-solid fa-person-running mr-2"></i> Log Senaman / Aktiviti</h3>`;
+            if(workouts.length > 0) {
+                html += `<ul class="space-y-2">`;
+                workouts.forEach(item => {
+                    html += `
+                    <li class="flex justify-between items-center text-xs bg-orange-50 p-2 rounded-xl shadow-sm border border-orange-100">
+                        <span><i class="fa-regular fa-clock text-slate-400 mr-1"></i> ${item.time || ''} - ${item.food} : Dibakar ${item.cals}kcal</span>
+                        <button onclick="padamLog('calDef', ${item.id})" class="text-rose-500 hover:bg-rose-100 p-1 rounded transition"><i class="fa-solid fa-trash"></i></button>
+                    </li>`;
+                });
+                html += `</ul>`;
+            } else {
+                html += `<p class="text-xs text-slate-500 mb-4">Tiada rekod senaman pada tarikh ini.</p>`;
+            }
+
+            // 3. HPT & DM
+            const hpts = mhData.hpt.filter(x => x.date === selDate);
+            const dms = mhData.dm.filter(x => x.date === selDate);
+            html += `<h3 class="font-bold text-sm text-rose-600 border-b-2 border-rose-200 pb-1 mt-5 mb-3"><i class="fa-solid fa-heart-pulse mr-2"></i> Log Kesihatan (HPT & DM)</h3>`;
+            
+            if(hpts.length > 0 || dms.length > 0) {
+                html += `<ul class="space-y-2">`;
+                hpts.forEach(h => {
+                    html += `
+                    <li class="flex justify-between items-center text-xs bg-rose-50 p-2 rounded-xl shadow-sm border border-rose-100">
+                        <span><strong class="text-rose-600">BP:</strong> ${h.sys}/${h.dia} mmHg, Nadi: ${h.pulse} (${h.time}) <br><span class="text-[10px] text-slate-500">${h.stat}</span></span>
+                        <button onclick="padamLog('hpt', ${h.id})" class="text-rose-500 hover:bg-rose-100 p-1 rounded transition"><i class="fa-solid fa-trash"></i></button>
+                    </li>`;
+                });
+                dms.forEach(d => {
+                    html += `
+                    <li class="flex justify-between items-center text-xs bg-indigo-50 p-2 rounded-xl shadow-sm border border-indigo-100">
+                        <span><strong class="text-indigo-600">Gula:</strong> ${d.sugar} mmol/L (${d.cond}, ${d.wkt}) <br><span class="text-[10px] text-slate-500">${d.stat}</span></span>
+                        <button onclick="padamLog('dm', ${d.id})" class="text-rose-500 hover:bg-rose-100 p-1 rounded transition"><i class="fa-solid fa-trash"></i></button>
+                    </li>`;
+                });
+                html += `</ul>`;
+            } else {
+                html += `<p class="text-xs text-slate-500">Tiada rekod kesihatan pada tarikh ini.</p>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function padamLog(jenisDB, idData) {
+            if(confirm("Tindakan ini tidak boleh berpatah balik. Padam rekod ini?")) {
+                mhData[jenisDB] = mhData[jenisDB].filter(x => x.id !== idData);
+                saveData(); // SaveData akan memanggil analisisKeseluruhan dan renderDetailedLogs secara automatik
+            }
+        }
+
+        function cetakDariTabLogs() {
+            // Gunakan tarikh dari paparan Log Terperinci untuk fungsi print sedia ada
+            const logDate = document.getElementById('logDateSelect').value;
+            document.getElementById('printDateSelect').value = logDate;
+            preparePrint();
+        }
+
+        // ============================================================================
+
+        function checkHptStatus(sys, dia) {
+            if(sys < 120 && dia < 80) return "Normal";
+            if(sys < 130 && dia < 80) return "Tinggi (Elevated)";
+            if(sys < 140 || dia < 90) return "Hipertensi Tahap 1";
+            return "Hipertensi Tahap 2";
+        }
+
+        function checkDmStatus(sugar, cond) {
+            if(cond === 'Berpuasa') return sugar < 5.6 ? "Normal" : (sugar <= 6.9 ? "Pra-Diabetes" : "Diabetes");
+            return sugar < 7.8 ? "Normal" : (sugar <= 11.0 ? "Pra-Diabetes" : "Diabetes");
+        }
+
+        function simpanHPT() {
+            const sys = parseInt(document.getElementById('bpSys').value);
+            const dia = parseInt(document.getElementById('bpDia').value);
+            const pulse = parseInt(document.getElementById('bpPulse').value);
+            if(sys && dia) {
+                const stat = checkHptStatus(sys, dia);
+                mhData.hpt.push({ 
+                    id: Date.now(), 
+                    date: todayDate, 
+                    time: new Date().toLocaleTimeString('ms-MY', {hour: '2-digit', minute:'2-digit', hour12:true}), 
+                    sys, dia, pulse, stat 
+                });
+                saveData();
+                const div = document.getElementById('hptAnalysis');
+                div.innerHTML = `<strong class="${sys>130?'text-rose-600':'text-emerald-600'}">Analisis: ${stat}</strong>`;
+                div.classList.remove('hidden');
+                div.classList.add('bg-slate-100');
+            }
+        }
+
+        function simpanDM() {
+            const sugar = parseFloat(document.getElementById('dmSugar').value);
+            const cond = document.getElementById('dmCondition').value;
+            const wkt = document.getElementById('dmTime').value;
+            if(sugar) {
+                const stat = checkDmStatus(sugar, cond);
+                mhData.dm.push({ 
+                    id: Date.now(), 
+                    date: todayDate, 
+                    time: new Date().toLocaleTimeString('ms-MY', {hour: '2-digit', minute:'2-digit', hour12:true}),
+                    wkt, cond, sugar, stat 
+                });
+                saveData();
+                const div = document.getElementById('dmAnalysis');
+                div.innerHTML = `<strong class="${stat!=='Normal'?'text-indigo-600':'text-emerald-600'}">Analisis: ${stat}</strong>`;
+                div.classList.remove('hidden');
+                div.classList.add('bg-slate-100');
+            }
+        }
+
+        function renderHealthLog() {
+            const ul = document.getElementById('healthLog');
+            ul.innerHTML = '';
+            mhData.hpt.filter(x=>x.date===todayDate).forEach(h => {
+                ul.innerHTML += `<li class="flex justify-between border-b pb-1"><span><i class="fa-solid fa-heart-pulse text-rose-500"></i> BP: ${h.sys}/${h.dia}</span><span class="text-[10px] text-slate-500">${h.stat}</span></li>`;
+            });
+            mhData.dm.filter(x=>x.date===todayDate).forEach(d => {
+                ul.innerHTML += `<li class="flex justify-between border-b pb-1"><span><i class="fa-solid fa-droplet text-indigo-500"></i> Gula: ${d.sugar} (${d.cond})</span><span class="text-[10px] text-slate-500">${d.stat}</span></li>`;
+            });
+        }
+
+        function populateFormProfile() {
+            document.getElementById('profNama').value = mhData.profile.nama || '';
+            document.getElementById('profDob').value = mhData.profile.dob || '';
+            document.getElementById('profJantina').value = mhData.profile.jantina || 'lelaki';
+            document.getElementById('profTinggi').value = mhData.profile.tinggi || '';
+            document.getElementById('profBerat').value = mhData.profile.berat || '';
+            document.getElementById('profTarget').value = mhData.profile.targetBerat || '';
+            document.getElementById('profEmel').value = mhData.profile.emel || '';
+            document.getElementById('profApiKey').value = mhData.profile.apiKey || '';
+        }
+
+        function simpanProfile(e) {
+            e.preventDefault();
+            mhData.profile = {
+                nama: document.getElementById('profNama').value,
+                dob: document.getElementById('profDob').value,
+                jantina: document.getElementById('profJantina').value,
+                tinggi: parseFloat(document.getElementById('profTinggi').value),
+                berat: parseFloat(document.getElementById('profBerat').value),
+                targetBerat: parseFloat(document.getElementById('profTarget').value),
+                emel: document.getElementById('profEmel').value,
+                apiKey: document.getElementById('profApiKey').value
+            };
+            saveData();
+            alert("Profil berjaya dikemaskini!");
+        }
+
+        function bukaModalSetting() { document.getElementById('modalSetting').classList.remove('hidden'); }
+        function tutupModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function exportData() {
+            const blob = new Blob([JSON.stringify(mhData)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `MyHealthy_Backup_${todayDate}.json`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = e => {
+                mhData = JSON.parse(e.target.result);
+                saveData(); populateFormProfile(); alert("Data dipulihkan!"); tutupModal('modalSetting');
+            };
+            if(file) reader.readAsText(file);
+        }
+
+        function preparePrint() {
+            const selDate = document.getElementById('printDateSelect').value;
+            document.getElementById('printDate').innerText = `Log Tarikh: ${selDate}`;
+            
+            const prof = mhData.profile;
+            document.getElementById('printProfileInfo').innerHTML = `
+                <div><strong>Nama:</strong> ${prof.nama}</div>
+                <div><strong>BMI:</strong> ${(prof.berat / Math.pow(prof.tinggi/100, 2)).toFixed(1)}</div>
+                <div><strong>Tinggi/Berat:</strong> ${prof.tinggi}cm / ${prof.berat}kg</div>
+                <div><strong>Target:</strong> ${prof.targetBerat}kg</div>
+            `;
+
+            let logHtml = `<h3 class="font-bold mt-4 border-b border-black">Log Pemakanan & Aktiviti</h3>`;
+            
+            // Generate print layout grouped by meals exactly like the requested format
+            const meals = {'Sarapan':[], 'Makan Tengah Hari':[], 'Makan Malam':[], 'Snek':[]};
+            mhData.calDef.filter(x => x.date === selDate && x.type === 'in').forEach(x => meals[x.meal].push(x));
+            
+            for(let m in meals) {
+                if(meals[m].length > 0) {
+                    let namaMakanan = meals[m].map(x => x.food).join(' - ');
+                    let senaraiKalori = meals[m].map(x => x.cals + 'kcal').join(' - ');
+                    let jumlahCals = meals[m].reduce((sum, x) => sum + x.cals, 0);
+                    
+                    logHtml += `<p class="mt-2 text-sm"><strong>${m}</strong><br>${m} (${namaMakanan} | ${senaraiKalori} | Jumlah Kalori: ${jumlahCals}kcal)</p>`;
+                }
+            }
+
+            const workouts = mhData.calDef.filter(x => x.date === selDate && x.type === 'out');
+            if(workouts.length > 0) {
+                logHtml += `<ul class="text-sm list-disc pl-5 mt-2">`;
+                workouts.forEach(c => { logHtml += `<li>Bakar Senaman: ${c.food} (${c.cals} kcal) - ${c.time||''}</li>`; });
+                logHtml += `</ul>`;
+            }
+
+            logHtml += `<h3 class="font-bold mt-4 border-b border-black">Log HPT & DM</h3><ul class="text-sm list-disc pl-5 mt-2">`;
+            mhData.hpt.filter(x=>x.date===selDate).forEach(h => {
+                logHtml += `<li>BP: ${h.sys}/${h.dia} mmHg | Nadi: ${h.pulse} (${h.time}) - Status: ${h.stat}</li>`;
+            });
+            mhData.dm.filter(x=>x.date===selDate).forEach(d => {
+                logHtml += `<li>Gula: ${d.sugar} mmol/L (${d.cond}, ${d.wkt}) - Status: ${d.stat}</li>`;
+            });
+            logHtml += `</ul>`;
+            
+            document.getElementById('printDataLog').innerHTML = logHtml;
+            tutupModal('modalSetting');
+            window.print();
+        }
+
+        let isBM = true;
+        function toggleBahasa() {
+            isBM = !isBM;
+            alert(isBM ? "Mod Bahasa Melayu diaktifkan." : "English Mode Activated.");
+        }
+    </script>
+</body>
+</html>
+
