@@ -328,7 +328,6 @@
             const saved = localStorage.getItem('myHealthyDB');
             if(saved) {
                 mhData = JSON.parse(saved);
-                // Tambah ID (patch) bagi data lama supaya fungsi PADAM tidak gagal
                 mhData.calDef.forEach(x => { if(!x.id) x.id = Date.now() + Math.random(); });
                 mhData.hpt.forEach(x => { if(!x.id) x.id = Date.now() + Math.random(); });
                 mhData.dm.forEach(x => { if(!x.id) x.id = Date.now() + Math.random(); });
@@ -414,13 +413,14 @@
         }
 
         // ============================================================================
-        // PANGGILAN MODEL GEMINI-3.8-FLASH DENGAN SISTEM TIMEOUT
+        // PANGGILAN MODEL GEMINI-3.8-FLASH (TIMEOUT DILONGGARKAN KE 30 SAAT)
         // ============================================================================
         async function panggilGeminiAI(prompt, apiKey) {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`;
             
+            // Timeout ditingkatkan kepada 30 saat untuk menangani trafik pelayan Google yang perlahan
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); 
+            const timeoutId = setTimeout(() => controller.abort(), 30000); 
 
             try {
                 const response = await fetch(url, {
@@ -442,9 +442,9 @@
             } catch (error) {
                 clearTimeout(timeoutId);
                 if (error.name === 'AbortError') {
-                    throw new Error("API tersekat. Pastikan anda menjalankan aplikasi dari URL pelayan (contoh: GitHub Pages), bukan storan telefon (content://).");
+                    throw new Error("Pelayan Google mengambil masa terlalu lama untuk membalas (Timeout > 30s). Sila cuba sebentar lagi.");
                 }
-                throw error;
+                throw error; // Lemparkan ralat sebenar jika masalah berpunca daripada API Key atau kuota
             }
         }
 
@@ -540,15 +540,11 @@
             });
         }
 
-        // ============================================================================
-        // LOGIK BARU: TAB LOG TERPERINCI & FUNGSI PADAM (EDIT)
-        // ============================================================================
         function renderDetailedLogs() {
             const selDate = document.getElementById('logDateSelect').value;
             const container = document.getElementById('detailedLogsContainer');
             let html = '';
 
-            // 1. Kumpulan Pemakanan Sinergi (Cal In)
             const meals = {'Sarapan':[], 'Makan Tengah Hari':[], 'Makan Malam':[], 'Snek':[]};
             mhData.calDef.filter(x => x.date === selDate && x.type === 'in').forEach(x => {
                 if(meals[x.meal]) meals[x.meal].push(x);
@@ -560,7 +556,6 @@
             for(let m in meals) {
                 if(meals[m].length > 0) {
                     adaMakan = true;
-                    // Format sinergi: Nasi Goreng - Karipap - Kopi | 360kcal - 150kcal - 90kcal
                     let namaMakanan = meals[m].map(x => x.food).join(' - ');
                     let senaraiKalori = meals[m].map(x => x.cals + 'kcal').join(' - ');
                     let jumlahCals = meals[m].reduce((sum, x) => sum + x.cals, 0);
@@ -585,7 +580,6 @@
             }
             if(!adaMakan) html += `<p class="text-xs text-slate-500 mb-4">Tiada rekod pemakanan pada tarikh ini.</p>`;
 
-            // 2. Senaman (Cal Out)
             const workouts = mhData.calDef.filter(x => x.date === selDate && x.type === 'out');
             html += `<h3 class="font-bold text-sm text-orange-600 border-b-2 border-orange-200 pb-1 mt-5 mb-3"><i class="fa-solid fa-person-running mr-2"></i> Log Senaman / Aktiviti</h3>`;
             if(workouts.length > 0) {
@@ -602,7 +596,6 @@
                 html += `<p class="text-xs text-slate-500 mb-4">Tiada rekod senaman pada tarikh ini.</p>`;
             }
 
-            // 3. HPT & DM
             const hpts = mhData.hpt.filter(x => x.date === selDate);
             const dms = mhData.dm.filter(x => x.date === selDate);
             html += `<h3 class="font-bold text-sm text-rose-600 border-b-2 border-rose-200 pb-1 mt-5 mb-3"><i class="fa-solid fa-heart-pulse mr-2"></i> Log Kesihatan (HPT & DM)</h3>`;
@@ -634,18 +627,15 @@
         function padamLog(jenisDB, idData) {
             if(confirm("Tindakan ini tidak boleh berpatah balik. Padam rekod ini?")) {
                 mhData[jenisDB] = mhData[jenisDB].filter(x => x.id !== idData);
-                saveData(); // SaveData akan memanggil analisisKeseluruhan dan renderDetailedLogs secara automatik
+                saveData(); 
             }
         }
 
         function cetakDariTabLogs() {
-            // Gunakan tarikh dari paparan Log Terperinci untuk fungsi print sedia ada
             const logDate = document.getElementById('logDateSelect').value;
             document.getElementById('printDateSelect').value = logDate;
             preparePrint();
         }
-
-        // ============================================================================
 
         function checkHptStatus(sys, dia) {
             if(sys < 120 && dia < 80) return "Normal";
@@ -772,7 +762,6 @@
 
             let logHtml = `<h3 class="font-bold mt-4 border-b border-black">Log Pemakanan & Aktiviti</h3>`;
             
-            // Generate print layout grouped by meals exactly like the requested format
             const meals = {'Sarapan':[], 'Makan Tengah Hari':[], 'Makan Malam':[], 'Snek':[]};
             mhData.calDef.filter(x => x.date === selDate && x.type === 'in').forEach(x => meals[x.meal].push(x));
             
